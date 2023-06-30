@@ -31,6 +31,7 @@ int key;
 
 p_task headTask = NULL;
 p_task tailTask = NULL;
+p_task currentTask = NULL;
 ThreadPool pool;
 
 int initThreadPool(ThreadPool *pool, int initialSize);

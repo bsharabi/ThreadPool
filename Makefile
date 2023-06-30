@@ -19,4 +19,9 @@ stdinExample: stdin_main.c
 
 .PHONY: clean
 clean:
-	-rm coder encoder tester 2>/dev/null
+	-rm coder ./Test/test ./Test/test.c encoder tester 2>/dev/null
+
+
+run:
+	./coder 12 -e < threadPool.c > ./Test/test
+	./coder 12 -d < ./Test/test > ./Test/test.c

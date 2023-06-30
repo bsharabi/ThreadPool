@@ -37,24 +37,26 @@ void execTask(p_task task, char *argv)
 {
 
     if (strcmp(argv, "-e") == 0)
-    {
         encrypt(task->buffer, key);
-        printf("%s", task->buffer);
-    }
     else if (strcmp(argv, "-d") == 0)
-    {
         decrypt(task->buffer, key);
-        printf("%s", task->buffer);
-    }
     else
-    {
         printf("Error");
+}
+void destroyTask()
+{
+    while (headTask != NULL)
+    {
+        p_task task = headTask;
+        headTask = headTask->next;
+        printf("%s", task->buffer);
+        free(task->buffer);
+        free(task);
     }
 }
 
 void addTask(char *buf)
 {
-
     p_task task = (p_task)malloc(sizeof(p_task));
     if (task == NULL)
     {
@@ -73,8 +75,8 @@ void addTask(char *buf)
         tailTask = headTask = task;
     else
     {
-       tailTask->next=task;
-       tailTask=task;
+        tailTask->next = task;
+        tailTask = task;
     }
     task->threadId = pool.poolSize;
 }
@@ -82,15 +84,17 @@ void addTask(char *buf)
 void *startJob(void *args)
 {
     p_task task;
-    if (headTask != NULL)
+    pthread_mutex_lock(&pool.mutex_lock);
+    if (currentTask != NULL)
     {
-        pthread_mutex_lock(&pool.mutex_lock);
-        task = headTask;
-        headTask = headTask->next;
+        task = currentTask;
+        currentTask = currentTask->next;
         pthread_mutex_unlock(&pool.mutex_lock);
         pthread_cond_broadcast(&pool.mutex_cond);
         execTask(task, args);
     }
+    pthread_mutex_unlock(&pool.mutex_lock);
+    pthread_cond_broadcast(&pool.mutex_cond);
     return NULL;
 }
 
@@ -135,16 +139,15 @@ int main(int argc, char *argv[])
             counter = 0;
         }
     }
+
     if (counter > 0)
     {
-        char lastData[counter];
-        lastData[0] = '\0';
-        strncat(lastData, data, counter);
-        addTask(lastData);
+        data[counter] = '\0';
+        addTask(data);
         if (addThreadToPool(&pool))
             return 1;
     }
-
+    currentTask = headTask;
     for (int i = 0; i < pool.poolSize; i++)
     {
         if (pthread_create(&pool.poolThread[i], NULL, startJob, argv[2]) != 0)
@@ -160,6 +163,7 @@ int main(int argc, char *argv[])
             exit(EXIT_FAILURE);
         }
     }
+    destroyTask();
     pthread_mutex_destroy(&pool.mutex_lock);
     pthread_cond_destroy(&pool.mutex_cond);
     destroyThreadPool(&pool);
